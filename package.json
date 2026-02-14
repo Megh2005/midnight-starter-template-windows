@@ -5,16 +5,16 @@
   "type": "module",
   "workspaces": [
     "counter-cli",
-    "counter-contract",
+    "voting-contract",
     "frontend-vite-react"
   ],
   "scripts": {
     "compact": "turbo run compact",
     "build": "turbo run build",
-    "build-production": "git lfs pull && cd counter-contract && npm run build && cd ../frontend-vite-react && npm run build",    
+    "build-production": "git lfs pull && cd voting-contract && npm run build && cd ../frontend-vite-react && npm run build",
     "setup-standalone": "cd counter-cli && npm run setup-undeployed",
-    "dev:frontend": "cd frontend-vite-react && npm run dev",    
-    "lint": "turbo run lint"     
+    "dev:frontend": "cd frontend-vite-react && npm run dev",
+    "lint": "turbo run lint"
   },
   "engines": {
     "node": ">=18"
@@ -69,6 +69,6 @@
   },
   "overrides": {
     "@midnight-ntwrk/compact-runtime": "0.14.0",
-    "@midnight-ntwrk/onchain-runtime-v1": "1.0.0-alpha.5"    
+    "@midnight-ntwrk/onchain-runtime-v1": "1.0.0-alpha.5"
   }
 }
