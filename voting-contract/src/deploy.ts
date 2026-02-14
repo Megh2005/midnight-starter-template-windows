@@ -1,11 +1,11 @@
 /**
- * Standalone deploy script for the counter contract.
+ * Standalone deploy script for the voting contract.
  *
  * Usage:
  *   npm run build && npm run deploy
  *
  * Prompts for a hex seed (or generates a new one), builds a wallet,
- * waits for sync + funds + dust, deploys the counter contract,
+ * waits for sync + funds + dust, deploys the voting contract,
  * and writes deployment.json with the contract address.
  */
 
@@ -19,7 +19,7 @@ import { WebSocket } from 'ws';
 import pino from 'pino';
 import pinoPretty from 'pino-pretty';
 
-import { Contract, ledger as counterLedger } from './managed/counter/contract/index.js';
+import { Contract, ledger as votingLedger } from './managed/voting/contract/index.js';
 import { CompiledContract } from '@midnight-ntwrk/compact-js';
 import { deployContract } from '@midnight-ntwrk/midnight-js-contracts';
 import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
@@ -59,7 +59,7 @@ const NETWORK_ID = process.env.NETWORK_ID ?? 'undeployed';
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 // ZK assets (keys, zkir) live in src/managed, not dist — tsc doesn't copy them
-const zkConfigPath = path.resolve(currentDir, '..', 'src', 'managed', 'counter');
+const zkConfigPath = path.resolve(currentDir, '..', 'src', 'managed', 'voting');
 const deploymentPath = path.resolve(currentDir, '..', 'deployment.json');
 
 // ---------------------------------------------------------------------------
@@ -73,9 +73,13 @@ const logger = pino(
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
-type CounterPrivateState = { privateCounter: number };
-type CounterCircuits = ImpureCircuitId<Contract<CounterPrivateState>>;
-const CounterPrivateStateId = 'counterPrivateState' as const;
+// The voting contract does not seem to have private state based on the code provided,
+// but we need to provide a private state type. If empty, we can use an empty object or a placeholder.
+// Looking at the contract code: export ledger polls... export ledger voteCount...
+// No `witness` or `private` keywords.
+type VotingPrivateState = Record<string, never>;
+type VotingCircuits = ImpureCircuitId<Contract<VotingPrivateState>>;
+const VotingPrivateStateId = 'votingPrivateState' as const;
 
 // ---------------------------------------------------------------------------
 // Helpers (adapted from counter-cli/src/api.ts)
@@ -263,7 +267,7 @@ async function main() {
   setNetworkId(NETWORK_ID);
 
   console.log('\n╔══════════════════════════════════════════════════════════╗');
-  console.log('║           Counter Contract Deploy Script                ║');
+  console.log('║           Voting Contract Deploy Script                 ║');
   console.log(`║           Network: ${NETWORK_ID.padEnd(38)}║`);
   console.log('╚══════════════════════════════════════════════════════════╝\n');
 
@@ -343,11 +347,11 @@ async function main() {
     wallet, shieldedSecretKeys, dustSecretKey, unshieldedKeystore, syncedState,
   );
 
-  const zkConfigProvider = new NodeZkConfigProvider<CounterCircuits>(zkConfigPath);
+  const zkConfigProvider = new NodeZkConfigProvider<VotingCircuits>(zkConfigPath);
 
   const providers = {
-    privateStateProvider: levelPrivateStateProvider<typeof CounterPrivateStateId>({
-      privateStateStoreName: 'counter-private-state',
+    privateStateProvider: levelPrivateStateProvider<typeof VotingPrivateStateId>({
+      privateStateStoreName: 'voting-private-state',
       signingKeyStoreName: 'signing-keys',
       midnightDbName: 'midnight-level-db',
       walletProvider: walletAndMidnightProvider,
@@ -360,17 +364,17 @@ async function main() {
   };
 
   // --- Compile contract ---
-  const counterCompiledContract = CompiledContract.make('counter', Contract).pipe(
+  const votingCompiledContract = CompiledContract.make('voting', Contract).pipe(
     CompiledContract.withVacantWitnesses,
     CompiledContract.withCompiledFileAssets(zkConfigPath),
   );
 
   // --- Deploy ---
-  const contract = await withStatus('Deploying counter contract (this may take a few minutes)', async () => {
+  const contract = await withStatus('Deploying voting contract (this may take a few minutes)', async () => {
     return deployContract(providers, {
-      compiledContract: counterCompiledContract,
-      privateStateId: CounterPrivateStateId,
-      initialPrivateState: { privateCounter: 0 },
+      compiledContract: votingCompiledContract,
+      privateStateId: VotingPrivateStateId,
+      initialPrivateState: {},
     });
   });
 
@@ -387,7 +391,7 @@ async function main() {
   fs.writeFileSync(deploymentPath, JSON.stringify(deployment, null, 2));
 
   console.log(`\n╔══════════════════════════════════════════════════════════╗`);
-  console.log(`║  Contract deployed successfully!                        ║`);
+  console.log(`║  Voting Contract deployed successfully!                 ║`);
   console.log(`╚══════════════════════════════════════════════════════════╝`);
   console.log(`  Address: ${contractAddress}`);
   console.log(`  Saved:   ${deploymentPath}\n`);
